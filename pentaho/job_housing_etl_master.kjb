@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job>
+  <name>job_housing_etl_master</name>
+  <description>Orquestador Master ETL para el pipeline de Housing Analytics</description>
+  <extended_description/>
+  <job_version>1.0</job_version>
+  <job_status>0</job_status>
+  <directory>/</directory>
+  <created_user>-</created_user>
+  <created_date>2026/10/08 16:00:00.000</created_date>
+  <modified_user>-</modified_user>
+  <modified_date>2026/10/08 16:00:00.000</modified_date>
+  <parameters>
+  </parameters>
+  <connection>
+    <name>MySQL_Housing_DB</name>
+    <server>localhost</server>
+    <type>MYSQL</type>
+    <access>Native</access>
+    <database>housing_db</database>
+    <port>3306</port>
+    <username>root</username>
+    <password>Encrypted </password>
+  </connection>
+  <entries>
+    <entry>
+      <name>START</name>
+      <type>SPECIAL</type>
+      <start>Y</start>
+      <repeat>N</repeat>
+      <schedulerType>0</schedulerType>
+      <intervalSeconds>0</intervalSeconds>
+      <intervalMinutes>60</intervalMinutes>
+      <hour>12</hour>
+      <minutes>0</minutes>
+      <weekDay>1</weekDay>
+      <DayOfMonth>1</DayOfMonth>
+      <parallel>N</parallel>
+      <xloc>100</xloc>
+      <yloc>150</yloc>
+    </entry>
+    <entry>
+      <name>Check DB Connections</name>
+      <type>CHECK_DB_CONNECTIONS</type>
+      <connections>
+        <connection>
+          <name>MySQL_Housing_DB</name>
+          <waitfor>0</waitfor>
+          <waittime>millisecond</waittime>
+        </connection>
+      </connections>
+      <parallel>N</parallel>
+      <xloc>280</xloc>
+      <yloc>150</yloc>
+    </entry>
+    <entry>
+      <name>Transformation - Feature Engineering</name>
+      <type>TRANS</type>
+      <specification_method>filename</specification_method>
+      <filename>${Internal.Entry.Current.Directory}/trans_housing_feature_engineering.ktr</filename>
+      <loglevel>Basic</loglevel>
+      <cluster>N</cluster>
+      <wait_until_finished>Y</wait_until_finished>
+      <parallel>N</parallel>
+      <xloc>520</xloc>
+      <yloc>150</yloc>
+    </entry>
+    <entry>
+      <name>SQL - Execute Stored Procedure</name>
+      <type>SQL</type>
+      <sql>CALL sp_process_and_load_housing();</sql>
+      <useVariableSubstitution>F</useVariableSubstitution>
+      <connection>MySQL_Housing_DB</connection>
+      <parallel>N</parallel>
+      <xloc>780</xloc>
+      <yloc>150</yloc>
+    </entry>
+    <entry>
+      <name>Success</name>
+      <type>SUCCESS</type>
+      <parallel>N</parallel>
+      <xloc>980</xloc>
+      <yloc>150</yloc>
+    </entry>
+    <entry>
+      <name>Abort Job - DB Connect Fail</name>
+      <type>ABORT</type>
+      <message>Error al conectar a la base de datos MySQL_Housing_DB</message>
+      <parallel>N</parallel>
+      <xloc>280</xloc>
+      <yloc>300</yloc>
+    </entry>
+    <entry>
+      <name>Abort Job - Transformation Fail</name>
+      <type>ABORT</type>
+      <message>Error durante la ejecucion de la transformacion trans_housing_feature_engineering.ktr</message>
+      <parallel>N</parallel>
+      <xloc>520</xloc>
+      <yloc>300</yloc>
+    </entry>
+  </entries>
+  <hops>
+    <hop>
+      <from>START</from>
+      <to>Check DB Connections</to>
+      <from_nr>0</from_nr>
+      <to_nr>0</to_nr>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>Y</unconditional>
+    </hop>
+    <hop>
+      <from>Check DB Connections</from>
+      <to>Transformation - Feature Engineering</to>
+      <from_nr>0</from_nr>
+      <to_nr>0</to_nr>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Transformation - Feature Engineering</from>
+      <to>SQL - Execute Stored Procedure</to>
+      <from_nr>0</from_nr>
+      <to_nr>0</to_nr>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>SQL - Execute Stored Procedure</from>
+      <to>Success</to>
+      <from_nr>0</from_nr>
+      <to_nr>0</to_nr>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Check DB Connections</from>
+      <to>Abort Job - DB Connect Fail</to>
+      <from_nr>0</from_nr>
+      <to_nr>0</to_nr>
+      <enabled>Y</enabled>
+      <evaluation>N</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Transformation - Feature Engineering</from>
+      <to>Abort Job - Transformation Fail</to>
+      <from_nr>0</from_nr>
+      <to_nr>0</to_nr>
+      <enabled>Y</enabled>
+      <evaluation>N</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+  </hops>
+</job>

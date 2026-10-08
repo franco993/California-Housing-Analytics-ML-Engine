@@ -1,0 +1,139 @@
+{
+  "encodingVersion": "1.0",
+  "maxTimerDrivenThreadCount": 10,
+  "registrar": "Apache NiFi Flow Definition",
+  "rootGroup": {
+    "identifier": "housing-nifi-process-group",
+    "name": "Housing_Census_Ingestion_Pipeline",
+    "comments": "Ingesta automatizada y validacion de esquemas para el dataset Housing 2.csv hacia MySQL Staging",
+    "position": {
+      "x": 0.0,
+      "y": 0.0
+    },
+    "processGroups": [],
+    "processors": [
+      {
+        "identifier": "proc-get-file",
+        "name": "GetFile / Ingest CSV",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "Input Directory": "/Users/francocarrasco/Downloads/",
+          "File Filter": "housing 2.csv",
+          "Keep Source File": "true",
+          "Polling Interval": "10 sec"
+        },
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "executionNode": "ALL"
+      },
+      {
+        "identifier": "proc-validate-record",
+        "name": "ValidateRecord Schema",
+        "type": "org.apache.nifi.processors.standard.ValidateRecord",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "record-reader": "CSVReader-Housing",
+          "record-writer": "JsonRecordSetWriter-Housing",
+          "schema-registry": "AvroSchemaRegistry-Housing"
+        }
+      },
+      {
+        "identifier": "proc-convert-csv-sql",
+        "name": "ConvertCSVToSQL",
+        "type": "org.apache.nifi.processors.standard.ConvertCSVToSQL",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "JDBC Connection Pool": "DBCPConnectionPool-MySQL",
+          "Statement Type": "INSERT",
+          "Table Name": "stg_housing",
+          "Schema Name": "housing_db"
+        }
+      },
+      {
+        "identifier": "proc-put-sql",
+        "name": "PutSQL / Insert to MySQL",
+        "type": "org.apache.nifi.processors.standard.PutSQL",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "JDBC Connection Pool": "DBCPConnectionPool-MySQL",
+          "Batch Size": "1000",
+          "Support Fragmented Transactions": "true"
+        }
+      },
+      {
+        "identifier": "proc-quarantine-file",
+        "name": "PutFile / Quarantine Invalid Data",
+        "type": "org.apache.nifi.processors.standard.PutFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "1.23.2"
+        },
+        "properties": {
+          "Directory": "/data/quarantine/housing/",
+          "Conflict Resolution Strategy": "replace"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "identifier": "conn-1",
+        "name": "Raw File Stream",
+        "source": { "id": "proc-get-file" },
+        "destination": { "id": "proc-validate-record" },
+        "selectedRelationships": ["success"]
+      },
+      {
+        "identifier": "conn-2",
+        "name": "Valid Schema Records",
+        "source": { "id": "proc-validate-record" },
+        "destination": { "id": "proc-convert-csv-sql" },
+        "selectedRelationships": ["valid"]
+      },
+      {
+        "identifier": "conn-3",
+        "name": "Invalid Quarantine Records",
+        "source": { "id": "proc-validate-record" },
+        "destination": { "id": "proc-quarantine-file" },
+        "selectedRelationships": ["invalid"]
+      },
+      {
+        "identifier": "conn-4",
+        "name": "Generated SQL Statements",
+        "source": { "id": "proc-convert-csv-sql" },
+        "destination": { "id": "proc-put-sql" },
+        "selectedRelationships": ["success"]
+      }
+    ],
+    "controllerServices": [
+      {
+        "identifier": "DBCPConnectionPool-MySQL",
+        "name": "DBCPConnectionPool-MySQL",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "properties": {
+          "Database Connection URL": "jdbc:mysql://localhost:3306/housing_db?allowLoadLocalInfile=true",
+          "Database Driver Class Name": "com.mysql.cj.jdbc.Driver",
+          "Database User": "root",
+          "Password": "******"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "HousingAnalytics_Daily_Flow": {
+    "Type": "Folder",
+    "ControlmServer": "ctm-server-prod",
+    "SiteStandard": "Enterprise_Standard",
+    "Application": "HousingAnalytics",
+    "SubApplication": "ETL_Pipeline",
+    "When": {
+      "Schedule": "Never",
+      "Months": ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"],
+      "MonthDays": ["ALL"],
+      "DaysOfWeek": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+      "StartTime": "02:00"
+    },
+    "Job_01_Check_MySQL": {
+      "Type": "Job:Command",
+      "Command": "nc -zv localhost 3306",
+      "RunAs": "ctmuser",
+      "Host": "etl-node-01"
+    },
+    "Job_02_Run_Pentaho_ETL": {
+      "Type": "Job:Command",
+      "Command": "/opt/pentaho/pdi-ce/kitchen.sh -file=${PROJECT_ROOT}/pentaho/job_housing_etl_master.kjb -level=Basic",
+      "RunAs": "ctmuser",
+      "Host": "etl-node-01",
+      "Variables": [
+        { "PROJECT_ROOT": "/Users/francocarrasco/IdeaProjects/HousingAnalytics" }
+      ]
+    },
+    "Job_03_Notify_Success": {
+      "Type": "Job:Command",
+      "Command": "echo 'ETL Housing Analytics finalizado exitosamente a las $(date)' >> /var/log/housing_etl.log",
+      "RunAs": "ctmuser",
+      "Host": "etl-node-01"
+    },
+    "Flow": {
+      "Sequence": [
+        "Job_01_Check_MySQL",
+        "Job_02_Run_Pentaho_ETL",
+        "Job_03_Notify_Success"
+      ]
+    }
+  }
+}
